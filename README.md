@@ -29,8 +29,12 @@ unity-countly provides the following advantages over countly-sdk-unity:
 
 ## Change Log
 
-The [change log](https://github.com/imkira/unity-countly/blob/master/CHANGES.md)
+The [change log](https://github.com/imkira/unity-countly/releases/)
 contains the list of changes and latest version information of each package.
+
+# Download Package
+
+[Download v0.0.1](https://github.com/imkira/unity-countly/releases/)
 
 ## How To Integrate
 
@@ -93,9 +97,6 @@ e.Segmentation =
 
 CountlyManager.Emit(e);
 ```
-
-# Packages
-
 
 ## Contribute
 
