@@ -34,8 +34,9 @@ contains the list of changes and latest version information of each package.
 
 # Download Package
 
-- [Download v0.0.2](https://github.com/imkira/unity-countly/releases/download/v0.0.2/unity-countly.unitypackage)
-- [Download demo](https://github.com/imkira/unity-countly/releases/download/v0.0.2/unity-countly-demo.unitypackage)
+Latest release: v0.0.3
+- [Download](https://github.com/imkira/unity-countly/releases/download/v0.0.3/unity-countly.unitypackage)
+- [Download demo](https://github.com/imkira/unity-countly/releases/download/v0.0.3/unity-countly-demo.unitypackage)
 
 ## How To Integrate
 
