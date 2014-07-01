@@ -491,18 +491,15 @@ public class CountlyManager : Countly.Manager
 
   protected void Awake()
   {
-    if (_instance != this)
+    if ((_instance != this) && (_instance != null))
     {
-      if (_instance != null)
-      {
-        Log("Duplicate manager detected. Destroying...");
-        Destroy(gameObject);
-        return;
-      }
-
-      _instance = this;
-      DontDestroyOnLoad(gameObject);
+      Log("Duplicate manager detected. Destroying...");
+      Destroy(gameObject);
+      return;
     }
+
+    _instance = this;
+    DontDestroyOnLoad(gameObject);
   }
 
   public static new void Init(string appKey = null)
