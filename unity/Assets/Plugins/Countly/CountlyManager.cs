@@ -25,6 +25,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using System.Net;
 
 namespace Countly
 {
@@ -84,7 +85,7 @@ namespace Countly
         return;
       }
 
-      //this.appKey = appKey;
+      this.appKey = appKey;
 
       if ((_isRunning == true) ||
           (_isReady == false))
@@ -195,13 +196,14 @@ namespace Countly
 
       builder.Append("&session_duration=");
       AppendConnectionData(builder, duration.ToString());
+			Log ("Requesting session end");
+		try {
+				WebRequest www = WebRequest.Create(appHost + "/i?" +builder.ToString());
+				www.GetResponse().Close();
 
-      ConnectionQueue.Enqueue(builder.ToString());
-			if (_isSuspended) {
-				ProcessConnectionQueue(true);
 			}
-			else {
-      			ProcessConnectionQueue();
+		catch (System.Exception e) {
+				Log (string.Format("Request failed: {0}", e));
 			}
     }
 
@@ -284,7 +286,7 @@ namespace Countly
 
 #region Utility Methods
 
-	protected void ProcessConnectionQueue(bool immediate = false)
+	protected void ProcessConnectionQueue()
 	{
 		if ((_isProcessingConnection == true) ||
 		    (ConnectionQueue.Count <= 0))
@@ -293,17 +295,13 @@ namespace Countly
 		}
 			
 		_isProcessingConnection = true;
-			if (immediate) {
-		StartCoroutine(_ProcessConnectionQueue(true));
-			}
-			else {
+		
 		StartCoroutine(_ProcessConnectionQueue());
-			}
 	}
 
     protected IEnumerator _ProcessConnectionQueue()
     {
-			int retry = 0;
+	  int retry = 0;
       while (ConnectionQueue.Count > 0)
       {
         string data = ConnectionQueue.Peek();
@@ -338,48 +336,6 @@ namespace Countly
 
       _isProcessingConnection = false;
     }
-
-	protected IEnumerator _ProcessConnectionQueue(bool dontWaitForReturn)
-		{
-			int retry = 0;
-			while (ConnectionQueue.Count > 0)
-			{
-				string data = ConnectionQueue.Peek();
-				string urlString = appHost + "/i?" + data;
-				
-				Log("Request started: " + urlString);
-				
-				WWW www = new WWW(urlString)
-				{
-					threadPriority = ThreadPriority.Low
-				};
-				if (dontWaitForReturn == true) {
-					ConnectionQueue.Dequeue();
-					Debug.Log ("Request successful");
-					yield return null;
-				}
-				yield return www;
-				
-				if (string.IsNullOrEmpty(www.error) == false && retry < 5)
-				{
-					Log("Request failed: " + www.error);
-					retry++;
-					break;
-				}
-				
-				ConnectionQueue.Dequeue();
-				if (retry >=5) {
-					retry = 0;
-					Log("Request failed after 5 retries");
-				}
-				else {
-					retry = 0;
-					Log("Request successful");
-				}
-			}
-			
-			_isProcessingConnection = false;
-		}
 
     protected DeviceInfo GetDeviceInfo()
     {
