@@ -34,9 +34,10 @@ namespace Countly
 
     public static double GetCurrentTime()
     {
-      TimeSpan t = (DateTime.UtcNow - EPOCH_TIME);
+      TimeSpan t = (DateTime.Now - EPOCH_TIME.ToLocalTime());
       return t.TotalSeconds;
     }
+	
 
     public static string EscapeURL(string str)
     {

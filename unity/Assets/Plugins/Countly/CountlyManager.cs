@@ -84,7 +84,7 @@ namespace Countly
         return;
       }
 
-      this.appKey = appKey;
+      //this.appKey = appKey;
 
       if ((_isRunning == true) ||
           (_isReady == false))
@@ -115,8 +115,8 @@ namespace Countly
 #region Unity Methods
     protected void Start()
     {
-      _isReady = true;
-      Init(appKey);
+     	 _isReady = true;
+     	 Init(appKey);
     }
 
     protected void OnApplicationPause(bool pause)
@@ -197,7 +197,12 @@ namespace Countly
       AppendConnectionData(builder, duration.ToString());
 
       ConnectionQueue.Enqueue(builder.ToString());
-      ProcessConnectionQueue();
+			if (_isSuspended) {
+				ProcessConnectionQueue(true);
+			}
+			else {
+      			ProcessConnectionQueue();
+			}
     }
 
     protected void RecordEvents(List<Event> events)
@@ -278,20 +283,27 @@ namespace Countly
     }
 
 #region Utility Methods
-    protected void ProcessConnectionQueue()
-    {
-      if ((_isProcessingConnection == true) ||
-          (ConnectionQueue.Count <= 0))
-      {
-        return;
-      }
 
-      _isProcessingConnection = true;
-      StartCoroutine(_ProcessConnectionQueue());
-    }
+	protected void ProcessConnectionQueue(bool immediate = false)
+	{
+		if ((_isProcessingConnection == true) ||
+		    (ConnectionQueue.Count <= 0))
+		{
+			return;
+		}
+			
+		_isProcessingConnection = true;
+			if (immediate) {
+		StartCoroutine(_ProcessConnectionQueue(true));
+			}
+			else {
+		StartCoroutine(_ProcessConnectionQueue());
+			}
+	}
 
     protected IEnumerator _ProcessConnectionQueue()
     {
+			int retry = 0;
       while (ConnectionQueue.Count > 0)
       {
         string data = ConnectionQueue.Peek();
@@ -306,18 +318,68 @@ namespace Countly
 
         yield return www;
 
-        if (string.IsNullOrEmpty(www.error) == false)
+        if (string.IsNullOrEmpty(www.error) == false && retry < 5)
         {
-          Log("Request failed: " + www.error);
-          break;
+          	Log("Request failed: " + www.error);
+			retry++;
+         	break;
         }
-
+		
         ConnectionQueue.Dequeue();
-        Log("Request completed");
+				if (retry >=5) {
+					 retry = 0;
+       				 Log("Request failed after 5 retries");
+				}
+				else {
+					retry = 0;
+					Log("Request successful");
+				}
       }
 
       _isProcessingConnection = false;
     }
+
+	protected IEnumerator _ProcessConnectionQueue(bool dontWaitForReturn)
+		{
+			int retry = 0;
+			while (ConnectionQueue.Count > 0)
+			{
+				string data = ConnectionQueue.Peek();
+				string urlString = appHost + "/i?" + data;
+				
+				Log("Request started: " + urlString);
+				
+				WWW www = new WWW(urlString)
+				{
+					threadPriority = ThreadPriority.Low
+				};
+				if (dontWaitForReturn == true) {
+					ConnectionQueue.Dequeue();
+					Debug.Log ("Request successful");
+					yield return null;
+				}
+				yield return www;
+				
+				if (string.IsNullOrEmpty(www.error) == false && retry < 5)
+				{
+					Log("Request failed: " + www.error);
+					retry++;
+					break;
+				}
+				
+				ConnectionQueue.Dequeue();
+				if (retry >=5) {
+					retry = 0;
+					Log("Request failed after 5 retries");
+				}
+				else {
+					retry = 0;
+					Log("Request successful");
+				}
+			}
+			
+			_isProcessingConnection = false;
+		}
 
     protected DeviceInfo GetDeviceInfo()
     {
@@ -338,6 +400,7 @@ namespace Countly
     protected void FlushEvents(int threshold)
     {
       List<Event> eventQueue = EventQueue;
+
 
       // satisfy minimum number of eventQueue
       if ((eventQueue.Count <= 0) ||
@@ -394,7 +457,7 @@ namespace Countly
 
       builder.Append("app_key=");
       AppendConnectionData(builder, appKey);
-
+	
       builder.Append("&device_id=");
       AppendConnectionData(builder, info.UDID);
 
@@ -453,7 +516,7 @@ namespace Countly
 
       // close array of events
       builder.Append("]");
-
+			Log(builder.ToString());
       return builder.ToString();
     }
 
