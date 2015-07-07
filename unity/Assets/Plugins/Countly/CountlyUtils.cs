@@ -34,7 +34,7 @@ namespace Countly
 
     public static double GetCurrentTime()
     {
-      TimeSpan t = (DateTime.Now - EPOCH_TIME.ToLocalTime());
+      TimeSpan t = (DateTime.UtcNow - EPOCH_TIME);
       return t.TotalSeconds;
     }
 	

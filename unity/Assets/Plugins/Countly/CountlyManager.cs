@@ -37,6 +37,7 @@ namespace Countly
     public float updateInterval = 60f;
     public int eventSendThreshold = 10;
     public int queueLimit = 1024;
+	public int maxRetries = 5;
     public bool queueUsesStorage = true;
 
     public const string SDK_VERSION = "2.0";
@@ -196,15 +197,16 @@ namespace Countly
 
       builder.Append("&session_duration=");
       AppendConnectionData(builder, duration.ToString());
-			Log ("Requesting session end");
-		try {
-				WebRequest www = WebRequest.Create(appHost + "/i?" +builder.ToString());
-				www.GetResponse().Close();
+	  
+	  Log ("Requesting session end");
 
-			}
-		catch (System.Exception e) {
-				Log (string.Format("Request failed: {0}", e));
-			}
+	  try {
+		WebRequest www = WebRequest.Create(appHost + "/i?" +builder.ToString());
+	    www.GetResponse().Close();
+	  }
+	  catch (System.Exception e) {
+	    Log (string.Format("Request failed: {0}", e));
+	  }
     }
 
     protected void RecordEvents(List<Event> events)
@@ -285,18 +287,16 @@ namespace Countly
     }
 
 #region Utility Methods
-
 	protected void ProcessConnectionQueue()
 	{
-		if ((_isProcessingConnection == true) ||
-		    (ConnectionQueue.Count <= 0))
-		{
-			return;
-		}
+	  if ((_isProcessingConnection == true) ||
+	      (ConnectionQueue.Count <= 0))
+      {
+	    return;
+	  }
 			
-		_isProcessingConnection = true;
-		
-		StartCoroutine(_ProcessConnectionQueue());
+	  _isProcessingConnection = true;
+	  StartCoroutine(_ProcessConnectionQueue());
 	}
 
     protected IEnumerator _ProcessConnectionQueue()
@@ -316,22 +316,22 @@ namespace Countly
 
         yield return www;
 
-        if (string.IsNullOrEmpty(www.error) == false && retry < 5)
+        if (string.IsNullOrEmpty(www.error) == false && retry < maxRetries)
         {
-          	Log("Request failed: " + www.error);
-			retry++;
-         	break;
+          Log("Request failed: " + www.error);
+		  retry++;
+          break;
         }
 		
         ConnectionQueue.Dequeue();
-				if (retry >=5) {
-					 retry = 0;
-       				 Log("Request failed after 5 retries");
-				}
-				else {
-					retry = 0;
-					Log("Request successful");
-				}
+		if (retry >=maxRetries) {
+		  Log(string.Format ("Request failed after {0} retries", retry));
+		  retry = 0;
+		}
+		else {
+		  retry = 0;
+		  Log("Request successful");
+		}
       }
 
       _isProcessingConnection = false;
@@ -472,7 +472,7 @@ namespace Countly
 
       // close array of events
       builder.Append("]");
-			Log(builder.ToString());
+
       return builder.ToString();
     }
 
