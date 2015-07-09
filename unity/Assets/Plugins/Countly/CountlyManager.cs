@@ -39,6 +39,7 @@ namespace Countly
     public int queueLimit = 1024;
 	public int maxRetries = 5;
     public bool queueUsesStorage = true;
+	public Profile userProfile;
 
     public const string SDK_VERSION = "2.0";
 
@@ -101,6 +102,15 @@ namespace Countly
       StartCoroutine(RunTimer());
     }
 
+	public Profile CreateProfile() {
+	  userProfile = new Profile();
+	  return userProfile;
+	}
+	
+	public void SendProfile() {
+	  UpdateProfile();
+	}
+
     public void RecordEvent(Event e)
     {
       bool wasEmpty = (ConnectionQueue.Count <= 0);
@@ -117,8 +127,12 @@ namespace Countly
 #region Unity Methods
     protected void Start()
     {
-     	 _isReady = true;
-     	 Init(appKey);
+	  if (userProfile == null) {
+		CreateProfile();
+	  }
+	  userProfile.Init();
+      _isReady = true;
+      Init(appKey);
     }
 
     protected void OnApplicationPause(bool pause)
@@ -170,11 +184,23 @@ namespace Countly
       builder.Append("&begin_session=1");
 
       builder.Append("&metrics=");
-      AppendConnectionData(builder, metricsString);
+	  AppendConnectionData(builder, metricsString);
 
       ConnectionQueue.Enqueue(builder.ToString());
       ProcessConnectionQueue();
     }
+
+	protected void UpdateProfile() {
+		DeviceInfo info = GetDeviceInfo();
+		StringBuilder builder = InitConnectionData(info);
+
+		builder.Append("&user_details=");
+		AppendConnectionData(builder, userProfile.JSONSerializeProfile().ToString());
+		
+		ConnectionQueue.Enqueue(builder.ToString());
+		ProcessConnectionQueue();
+	}
+	
 
     protected void UpdateSession(long duration)
     {
@@ -320,19 +346,18 @@ namespace Countly
         {
           Log("Request failed: " + www.error);
 		  retry++;
-          break;
         }
-		
-        ConnectionQueue.Dequeue();
-		if (retry >=maxRetries) {
-		  Log(string.Format ("Request failed after {0} retries", retry));
-		  retry = 0;
-		}
 		else {
+          ConnectionQueue.Dequeue();
+		  if (retry >=maxRetries) {
+		    Log(string.Format ("Request failed after {0} retries", retry));
+		  }
+		  else {
+			Log("Request successful");
+		  }
 		  retry = 0;
-		  Log("Request successful");
-		}
-      }
+	    }
+	  }
 
       _isProcessingConnection = false;
     }
@@ -417,10 +442,10 @@ namespace Countly
       builder.Append("&device_id=");
       AppendConnectionData(builder, info.UDID);
 
-      builder.Append("&timestamp=");
-
-      long timestamp = (long)Utils.GetCurrentTime();
-      builder.Append(timestamp);
+	  builder.Append("&timestamp=");
+			
+	  long timestamp = (long)Utils.GetCurrentTime();
+	  builder.Append(timestamp);
 
       return builder;
     }
