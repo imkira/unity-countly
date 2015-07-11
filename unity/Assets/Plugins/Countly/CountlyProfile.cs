@@ -68,7 +68,8 @@ namespace Countly
 			  foreach (KeyValuePair<string, string> pair in custom) {
 			    builder.Append("\"" + pair.Key + "\":\"" + pair.Value + "\",");
 
-			  }
+			}
+			builder.Length = builder.Length-1;
 			builder.Append("}");
 		  }
 	    

@@ -33,6 +33,7 @@ namespace Countly
   {
     public string appHost = "https://cloud.count.ly";
     public string appKey;
+	public string appVersion = "1.0";
     public bool allowDebug = false;
     public float updateInterval = 60f;
     public int eventSendThreshold = 10;
@@ -127,6 +128,8 @@ namespace Countly
 #region Unity Methods
     protected void Start()
     {
+	  CrashReporter.Init();
+
 	  if (userProfile == null) {
 		CreateProfile();
 	  }
@@ -199,6 +202,24 @@ namespace Countly
 		
 		ConnectionQueue.Enqueue(builder.ToString());
 		ProcessConnectionQueue();
+	}
+
+	public void SendReport() {
+		if (CrashReporter.reports == null || CrashReporter.reports.Count == 0) {
+			Log("No crash reports found");
+			return;
+	    }
+		DeviceInfo info = GetDeviceInfo();
+		StringBuilder builder = InitConnectionData(info);
+			
+		builder.Append("&crash=");
+		string report = CrashReporter.JSONSerializeReport(CrashReporter.reports[CrashReporter.reports.Count-1]).ToString();
+		AppendConnectionData(builder, report);
+			
+		ConnectionQueue.Enqueue(builder.ToString());
+		ProcessConnectionQueue();
+        
+		CrashReporter.reports.RemoveAt(CrashReporter.reports.Count-1);
 	}
 	
 
