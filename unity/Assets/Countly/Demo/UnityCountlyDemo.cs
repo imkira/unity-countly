@@ -62,6 +62,13 @@ public class UnityCountlyDemo : MonoBehaviour
 		  if (GUILayout.Button("Send Profile")) {
 			CountlyManager.Instance.SendProfile();
 		  }
+			
+			if (GUILayout.Button("Generate crash report")) {
+			  if (!CrashReporter.fetchReports()) {
+				CrashReporter.reports.Add(new CrashReporter.CountlyCrashReport("Test report"));
+				CountlyManager.Instance.SendReport();
+			  }
+	        }
 		GUILayout.EndVertical();
 
   }
