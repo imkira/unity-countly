@@ -103,8 +103,9 @@ namespace Countly
       StartCoroutine(RunTimer());
     }
 
-	public Profile CreateProfile() {
+	public Profile GetProfile() {
 	  userProfile = new Profile();
+		userProfile.Init();
 	  return userProfile;
 	}
 	
@@ -130,10 +131,6 @@ namespace Countly
     {
 	  CrashReporter.Init();
 
-	  if (userProfile == null) {
-		CreateProfile();
-	  }
-	  userProfile.Init();
       _isReady = true;
       Init(appKey);
     }
@@ -308,7 +305,12 @@ namespace Countly
       // device info may have changed
       UpdateDeviceInfo();
 
+		if (CrashReporter.fetchReports()) {
+		  SendReport();
+		}
+
       BeginSession();
+		
     }
 
     protected void Suspend()

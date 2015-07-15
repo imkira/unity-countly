@@ -6,7 +6,11 @@ using System.Text;
 namespace Countly
 {
   public static class CrashReporter {
-
+	
+	public static void SendLastReport() {
+		CountlyManager.Instance.SendReport();
+	}
+	
     public class CountlyCrashReport {
 	public CrashReport error;
 	public Dictionary<string, string> parameters;
@@ -46,6 +50,7 @@ namespace Countly
       parameters["_os_version"] = info.OSVersion;
 	  parameters["_app_version"] = CountlyManager.Instance.appVersion;
       parameters["_error"] = error.text;
+	  custom = new Dictionary<string, string>();
 	}
 
 	public CountlyCrashReport(string errorText) {
@@ -81,6 +86,7 @@ namespace Countly
 	  parameters["_os_version"] = info.OSVersion;
 	  parameters["_app_version"] = CountlyManager.Instance.appVersion;
 	  parameters["_error"] = errorText;
+	  custom = new Dictionary<string, string>();
 	}
   }
 
