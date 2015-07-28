@@ -37,6 +37,7 @@ namespace Countly
       TimeSpan t = (DateTime.UtcNow - EPOCH_TIME);
       return t.TotalSeconds;
     }
+	
 
     public static string EscapeURL(string str)
     {

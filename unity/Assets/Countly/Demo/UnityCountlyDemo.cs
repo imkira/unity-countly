@@ -1,11 +1,13 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using Countly;
 
 public class UnityCountlyDemo : MonoBehaviour
 {
+
   private void Awake()
   {
-    CountlyManager.Init("put_your_app_key_here");
+		//CountlyManager.Init("ac302c5fa092565c034108c09cb2c3c315be2233");
   }
 
   public void EmitPurchase()
@@ -33,22 +35,41 @@ public class UnityCountlyDemo : MonoBehaviour
   {
     Rect rect;
 
-    rect = new Rect(10, Screen.height - 320, Screen.width - 20, 150);
+    rect = new Rect(10, Screen.height - 20, Screen.width - 20, 150);
+	GUILayout.BeginArea(rect);
+	  GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Emit purchase event"))
+        {
+          Debug.Log("Emitting purchase event...");
 
-    if (GUI.Button(rect, "Emit purchase event"))
-    {
-      Debug.Log("Emitting purchase event...");
+          EmitPurchase();
+        }
 
-      EmitPurchase();
-    }
 
-    rect = new Rect(10, Screen.height - 160, Screen.width - 20, 150);
+        if (GUILayout.Button("Emit crazy event"))
+        {
+          Debug.Log("Emitting crazy event...");
 
-    if (GUI.Button(rect, "Emit crazy event"))
-    {
-      Debug.Log("Emitting crazy event...");
+          EmitCrazyEvent();
+        }
+	  GUILayout.EndHorizontal();
+	GUILayout.EndArea();
 
-      EmitCrazyEvent();
-    }
+		GUILayout.BeginVertical();
+		CountlyManager.Instance.userProfile.name = GUILayout.TextField(CountlyManager.Instance.userProfile.name);
+		CountlyManager.Instance.userProfile.username = GUILayout.TextField(CountlyManager.Instance.userProfile.username);
+		CountlyManager.Instance.userProfile.byear = GUILayout.TextField(CountlyManager.Instance.userProfile.byear);
+		  if (GUILayout.Button("Send Profile")) {
+			CountlyManager.Instance.SendProfile();
+		  }
+			
+			if (GUILayout.Button("Generate crash report")) {
+			  if (!CrashReporter.fetchReports()) {
+				CrashReporter.reports.Add(new CrashReporter.CountlyCrashReport("Test report"));
+				CountlyManager.Instance.SendReport();
+			  }
+	        }
+		GUILayout.EndVertical();
+
   }
 }

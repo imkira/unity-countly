@@ -25,6 +25,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using System.Net;
 
 namespace Countly
 {
@@ -32,11 +33,14 @@ namespace Countly
   {
     public string appHost = "https://cloud.count.ly";
     public string appKey;
+	public string appVersion = "1.0";
     public bool allowDebug = false;
     public float updateInterval = 60f;
     public int eventSendThreshold = 10;
     public int queueLimit = 1024;
+	public int maxRetries = 5;
     public bool queueUsesStorage = true;
+	public Profile userProfile;
 
     public const string SDK_VERSION = "2.0";
 
@@ -99,6 +103,16 @@ namespace Countly
       StartCoroutine(RunTimer());
     }
 
+	public Profile GetProfile() {
+	  userProfile = new Profile();
+		userProfile.Init();
+	  return userProfile;
+	}
+	
+	public void SendProfile() {
+	  UpdateProfile();
+	}
+
     public void RecordEvent(Event e)
     {
       bool wasEmpty = (ConnectionQueue.Count <= 0);
@@ -115,6 +129,8 @@ namespace Countly
 #region Unity Methods
     protected void Start()
     {
+	  CrashReporter.Init();
+
       _isReady = true;
       Init(appKey);
     }
@@ -168,11 +184,41 @@ namespace Countly
       builder.Append("&begin_session=1");
 
       builder.Append("&metrics=");
-      AppendConnectionData(builder, metricsString);
+	  AppendConnectionData(builder, metricsString);
 
       ConnectionQueue.Enqueue(builder.ToString());
       ProcessConnectionQueue();
     }
+
+	protected void UpdateProfile() {
+		DeviceInfo info = GetDeviceInfo();
+		StringBuilder builder = InitConnectionData(info);
+
+		builder.Append("&user_details=");
+		AppendConnectionData(builder, userProfile.JSONSerializeProfile().ToString());
+		
+		ConnectionQueue.Enqueue(builder.ToString());
+		ProcessConnectionQueue();
+	}
+
+	public void SendReport() {
+		if (CrashReporter.reports == null || CrashReporter.reports.Count == 0) {
+			Log("No crash reports found");
+			return;
+	    }
+		DeviceInfo info = GetDeviceInfo();
+		StringBuilder builder = InitConnectionData(info);
+			
+		builder.Append("&crash=");
+		string report = CrashReporter.JSONSerializeReport(CrashReporter.reports[CrashReporter.reports.Count-1]).ToString();
+		AppendConnectionData(builder, report);
+			
+		ConnectionQueue.Enqueue(builder.ToString());
+		ProcessConnectionQueue();
+        
+		CrashReporter.reports.RemoveAt(CrashReporter.reports.Count-1);
+	}
+	
 
     protected void UpdateSession(long duration)
     {
@@ -195,9 +241,16 @@ namespace Countly
 
       builder.Append("&session_duration=");
       AppendConnectionData(builder, duration.ToString());
+	  
+	  Log ("Requesting session end");
 
-      ConnectionQueue.Enqueue(builder.ToString());
-      ProcessConnectionQueue();
+	  try {
+		WebRequest www = WebRequest.Create(appHost + "/i?" +builder.ToString());
+	    www.GetResponse().Close();
+	  }
+	  catch (System.Exception e) {
+	    Log (string.Format("Request failed: {0}", e));
+	  }
     }
 
     protected void RecordEvents(List<Event> events)
@@ -252,7 +305,12 @@ namespace Countly
       // device info may have changed
       UpdateDeviceInfo();
 
+		if (CrashReporter.fetchReports()) {
+		  SendReport();
+		}
+
       BeginSession();
+		
     }
 
     protected void Suspend()
@@ -278,20 +336,21 @@ namespace Countly
     }
 
 #region Utility Methods
-    protected void ProcessConnectionQueue()
-    {
-      if ((_isProcessingConnection == true) ||
-          (ConnectionQueue.Count <= 0))
+	protected void ProcessConnectionQueue()
+	{
+	  if ((_isProcessingConnection == true) ||
+	      (ConnectionQueue.Count <= 0))
       {
-        return;
-      }
-
-      _isProcessingConnection = true;
-      StartCoroutine(_ProcessConnectionQueue());
-    }
+	    return;
+	  }
+			
+	  _isProcessingConnection = true;
+	  StartCoroutine(_ProcessConnectionQueue());
+	}
 
     protected IEnumerator _ProcessConnectionQueue()
     {
+	  int retry = 0;
       while (ConnectionQueue.Count > 0)
       {
         string data = ConnectionQueue.Peek();
@@ -306,15 +365,22 @@ namespace Countly
 
         yield return www;
 
-        if (string.IsNullOrEmpty(www.error) == false)
+        if (string.IsNullOrEmpty(www.error) == false && retry < maxRetries)
         {
           Log("Request failed: " + www.error);
-          break;
+		  retry++;
         }
-
-        ConnectionQueue.Dequeue();
-        Log("Request completed");
-      }
+		else {
+          ConnectionQueue.Dequeue();
+		  if (retry >=maxRetries) {
+		    Log(string.Format ("Request failed after {0} retries", retry));
+		  }
+		  else {
+			Log("Request successful");
+		  }
+		  retry = 0;
+	    }
+	  }
 
       _isProcessingConnection = false;
     }
@@ -338,6 +404,7 @@ namespace Countly
     protected void FlushEvents(int threshold)
     {
       List<Event> eventQueue = EventQueue;
+
 
       // satisfy minimum number of eventQueue
       if ((eventQueue.Count <= 0) ||
@@ -394,14 +461,14 @@ namespace Countly
 
       builder.Append("app_key=");
       AppendConnectionData(builder, appKey);
-
+	
       builder.Append("&device_id=");
       AppendConnectionData(builder, info.UDID);
 
-      builder.Append("&timestamp=");
-
-      long timestamp = (long)Utils.GetCurrentTime();
-      builder.Append(timestamp);
+	  builder.Append("&timestamp=");
+			
+	  long timestamp = (long)Utils.GetCurrentTime();
+	  builder.Append(timestamp);
 
       return builder;
     }
